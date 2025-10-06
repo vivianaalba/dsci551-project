@@ -1,9 +1,16 @@
 import streamlit as st
-import pandas as pd
+#import pandas as pd
+from read_csv import read_csv
 
 # run page -- streamlit run dashboard.py
 
-# test file printing
 st.write("Data Dashboard")
-data = pd.read_csv("data/Recalls_Data.csv")
+
+# test file printing with pandas to see what it should look like
+# data = read_csv("data/Recalls_Data.csv")
+# st.write(data)
+
+
+# test our functions
+data = read_csv("data/Recalls_Data.csv")
 st.write(data)

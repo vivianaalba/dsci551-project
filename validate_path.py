@@ -36,20 +36,15 @@ def validate_file(path):
     if match:
         name = match.group(0)
     
-    # validate file name, print error if need
+    # using extracted file name
+    # validate file name, print error for easier debugging
     if not validate_name(name):
         return False
         
 
+    # verify file path by checking that it opens
     try:
         with open(path, 'r') as f:
-            # if file opens successfully, it exists
-            return True
+            return True # return True if file exists
     except FileNotFoundError:
-        return False
-
-# test
-print(validate_file("participants 1.csv"))
-print(validate_file("psrticipants 1.csv"))
-print(validate_file("data/Recalls_Data.csv"))
-print(validate_file("psrticipants 1.pdf"))
+        return False # return False if file does not open (does not exist)
