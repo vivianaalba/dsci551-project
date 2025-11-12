@@ -6,8 +6,8 @@ from sort_data import sort_data
 from aggregate import group_by_aggregate
 
 # data file path 
-# path = "data/toy_data_cereals.csv" # toy data
-path = "data/FoodImports.csv" # larger data file
+toy_data_path = "data/toy_data_cereals.csv" # toy data
+food_imports_path = "data/FoodImports.csv" # larger data file // handle scaling
 
 # terminal command to run page locally
 # streamlit run dashboard.py
@@ -25,9 +25,9 @@ def format_for_table(data):
 @st.cache_data
 def load_data(format=None):
     if format == "table":
-        return read_csv(path, table_format=True)
+        return read_csv(food_imports_path, table_format=True)
     else:
-        return read_csv(path)
+        return read_csv(food_imports_path)
 
 table_data = load_data("table")
 data = load_data()
@@ -85,8 +85,7 @@ if st.button("Sort"):
 if "sorted_table_data" in st.session_state and st.session_state.sorted_table_data:
     paginate_table(st.session_state.sorted_table_data, key_prefix="sorted_table")
 
-# GROUP BY SECTION
-# GROUP BY SECTION
+# GROUP BY AND AGGREGATE
 st.write("## Group By and Aggregate")
 
 group_col = st.selectbox("Select column to group by", cols, key="group_col")
