@@ -1,4 +1,5 @@
 from validate_path import validate_file
+from parser import parse_csv_line
 
 # file reading logic
 # default headers = None, will use first line of data
