@@ -1,4 +1,5 @@
 import streamlit as st
+from paginate_table import paginate_table
 from read_csv import read_csv
 from filter_data import filter_data
 from sort_data import sort_data
@@ -19,8 +20,8 @@ def format_for_table(data):
     rows = [[row[h] for h in headers] for row in data]
     return [headers] + rows
 
-
 # cache the dataset so it doesn’t reload each time you press a button
+# helps with scaling and performance
 @st.cache_data
 def load_data(format=None):
     if format == "table":
@@ -32,14 +33,14 @@ table_data = load_data("table")
 data = load_data()
 
 
-# view entire dataset
+# VIEW ENTIRE DATASET
 # Streamlit expander toggles table visibility
 # can also add different datasets here in the future when we work with join
 st.write("## View Dataset")
 
 with st.expander("View Entire Data Table"):
     if table_data:
-        st.table(table_data) # data loads as a full table
+        paginate_table(table_data, key_prefix="main_table") # data loads as a full table
     else:
         st.error("Failed to load data.")
 
@@ -47,6 +48,7 @@ with st.expander("View Entire Data Table"):
 cols = list(data[0].keys())  # list of cols in data
 
 
+# FILTER DATASET
 # FILTER DATASET
 st.write("## Filter Dataset by Column")
 
@@ -57,9 +59,13 @@ value = st.text_input("Enter value", key="filter_value")
 if st.button("Filter"):
     filtered_data = filter_data(data, filter_col, operator, value)
     if filtered_data:
-        st.table(format_for_table(filtered_data))
+        st.session_state.filtered_table_data = format_for_table(filtered_data)
     else:
-        st.warning("No matching rows found.") # return error if no output
+        st.session_state.filtered_table_data = None
+
+# display after filtering
+if "filtered_table_data" in st.session_state and st.session_state.filtered_table_data:
+    paginate_table(st.session_state.filtered_table_data, key_prefix="filtered_table")
 
 
 # SORT DATA SET - sort by col (asc or desc)
@@ -71,10 +77,15 @@ order_by = st.selectbox("Select Order", ["asc", "desc"], key="sort_order")
 if st.button("Sort"):
     sorted_data = sort_data(data, sort_col, order_by)
     if sorted_data:
-        st.table(format_for_table(sorted_data))
+        st.session_state.sorted_table_data = format_for_table(sorted_data)
     else:
-        st.warning("Sorting returned no results.") # return error if no output
+        st.session_state.sorted_table_data = None
 
+# display after sorting
+if "sorted_table_data" in st.session_state and st.session_state.sorted_table_data:
+    paginate_table(st.session_state.sorted_table_data, key_prefix="sorted_table")
+
+# GROUP BY SECTION
 # GROUP BY SECTION
 st.write("## Group By and Aggregate")
 
@@ -82,7 +93,7 @@ group_col = st.selectbox("Select column to group by", cols, key="group_col")
 agg_col = st.selectbox("Select column to aggregate", cols, key="agg_col")
 agg_func_name = st.selectbox("Select aggregation function", ["count", "sum", "avg", "min", "max"], key="agg_func")
 
-# Define the actual aggregation function
+# define aggregation logic
 if agg_func_name == "count":
     agg_func = lambda vals: len(vals)
 elif agg_func_name == "sum":
@@ -96,9 +107,11 @@ elif agg_func_name == "max":
 
 if st.button("Run Group By"):
     grouped = group_by_aggregate(data, group_col, agg_col, agg_func)
-
-    # Convert to display table
     table_ready = [[group_col, f"{agg_func_name}({agg_col})"]] + [
         [key, val] for key, val in grouped.items()
     ]
-    st.table(table_ready)
+    st.session_state.grouped_table_data = table_ready
+
+# display after grouping
+if "grouped_table_data" in st.session_state and st.session_state.grouped_table_data:
+    paginate_table(st.session_state.grouped_table_data, key_prefix="grouped_table")

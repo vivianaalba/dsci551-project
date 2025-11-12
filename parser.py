@@ -67,7 +67,7 @@ def parse_csv_line(line):
         else:
             field += char
         i += 1
-    fields.append(parse_fild(field))  # Add the last field
+    fields.append(parse_field(field))  # Add the last field
     return fields
 
 # Example usage:
