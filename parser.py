@@ -70,7 +70,3 @@ def parse_csv_line(line):
     fields.append(parse_field(field))  # Add the last field
     return fields
 
-# Example usage:
-csv_line = '123,"hello, world","escaped ""quotes"" inside",456,:,{"key1":"value1","key2":42,"key3":3.14}'
-parsed_fields = parse_csv_line(csv_line)
-print(parsed_fields)

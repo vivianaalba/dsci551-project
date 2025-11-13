@@ -5,94 +5,97 @@ from filter_data import filter_data
 from sort_data import sort_data
 from aggregate import group_by_aggregate
 
-# data file path 
-toy_data_path = "data/toy_data_cereals.csv" # toy data
-food_imports_path = "data/FoodImports.csv" # larger data file // handle scaling
+# ==========================
+# DATA PATHS
+# ==========================
+toy_data_path = "data/toy_data_cereals.csv"
+food_imports_path = "data/FoodImports.csv"
+countries_path = "data/countries.csv"
 
-# terminal command to run page locally
-# streamlit run dashboard.py
-
-# helper function to format list-of-dicts into table format
+# ==========================
+# HELPER FUNCTIONS
+# ==========================
 def format_for_table(data):
+    """Convert list-of-dicts into table format for paginate_table."""
     if not data:
         return []
     headers = list(data[0].keys())
     rows = [[row[h] for h in headers] for row in data]
     return [headers] + rows
 
-# cache the dataset so it doesn’t reload each time you press a button
-# helps with scaling and performance
 @st.cache_data
-def load_data(format=None):
+def load_data(path, format=None):
+    """Load CSV using read_csv; optionally format for table display."""
+    data = read_csv(path)
     if format == "table":
-        return read_csv(food_imports_path, table_format=True)
-    else:
-        return read_csv(food_imports_path)
+        return format_for_table(data)
+    return data
 
-table_data = load_data("table")
-data = load_data()
+# ==========================
+# LOAD DATASETS
+# ==========================
+datasets = {
+    "Food Imports": (load_data(food_imports_path), load_data(food_imports_path, "table")),
+    "Toy Cereals": (load_data(toy_data_path), load_data(toy_data_path, "table")),
+    "Countries": (load_data(countries_path), load_data(countries_path, "table")),
+}
 
+# ==========================
+# DASHBOARD UI SETUP
+# ==========================
+st.title("Interactive Data Processing Dashboard")
+st.write("Use the controls below to filter, sort, group, and aggregate datasets interactively.")
 
-# VIEW ENTIRE DATASET
-# Streamlit expander toggles table visibility
-# can also add different datasets here in the future when we work with join
-st.write("## View Dataset")
+# allows users to select dataset for exploration
+dataset_name = st.selectbox("Select a dataset:", list(datasets.keys()))
+data, table_data = datasets[dataset_name]
+cols = list(data[0].keys())
 
-with st.expander("View Entire Data Table"):
-    if table_data:
-        paginate_table(table_data, key_prefix="main_table") # data loads as a full table
-    else:
-        st.error("Failed to load data.")
+# resets session state
+if st.button("Reset All"):
+    st.session_state.processed_data = None
+    st.session_state.processed_table = None
+    st.session_state.filters_applied = None
+    st.session_state.sort_applied = None
+    st.session_state.group_applied = None
+    st.cache_data.clear()
+    st.experimental_rerun()
 
+# ==========================
+# FILTER
+# ==========================
+st.header("Step 1: Filter Dataset")
 
-cols = list(data[0].keys())  # list of cols in data
+operator_map = {
+    "==": "equal to",
+    "!=": "not equal to",
+    ">": "greater than",
+    "<": "less than",
+    ">=": "greater than or equal to",
+    "<=": "less than or equal to"
+}
 
+filter_col = st.selectbox("Select column to filter by", cols, key="filter_col")
+selected_written_op = st.selectbox("Select operator", list(operator_map.values()), key="filter_op")
+selected_op = [op for op, written in operator_map.items() if written == selected_written_op][0]
+filter_value = st.text_input("Enter value", key="filter_value")
 
-# FILTER DATASET
-# FILTER DATASET
-st.write("## Filter Dataset by Column")
+# ==========================
+# SORT
+# ==========================
+st.header("Step 2: Sort Dataset")
+sort_col = st.selectbox("Select column to sort by", cols, key="sort_col")
+order_by = st.selectbox("Select sort order", ["asc", "desc"], key="sort_order")
 
-filter_col = st.selectbox("Select Column to Filter", cols, key="filter_col")
-operator = st.selectbox("Select operator", ["==", "!=", ">", "<", ">=", "<="], key="filter_op")
-value = st.text_input("Enter value", key="filter_value")
-
-if st.button("Filter"):
-    filtered_data = filter_data(data, filter_col, operator, value)
-    if filtered_data:
-        st.session_state.filtered_table_data = format_for_table(filtered_data)
-    else:
-        st.session_state.filtered_table_data = None
-
-# display after filtering
-if "filtered_table_data" in st.session_state and st.session_state.filtered_table_data:
-    paginate_table(st.session_state.filtered_table_data, key_prefix="filtered_table")
-
-
-# SORT DATA SET - sort by col (asc or desc)
-st.write("## Sort Dataset by Column")
-
-sort_col = st.selectbox("Select Column to Sort", cols, key="sort_col")
-order_by = st.selectbox("Select Order", ["asc", "desc"], key="sort_order")
-
-if st.button("Sort"):
-    sorted_data = sort_data(data, sort_col, order_by)
-    if sorted_data:
-        st.session_state.sorted_table_data = format_for_table(sorted_data)
-    else:
-        st.session_state.sorted_table_data = None
-
-# display after sorting
-if "sorted_table_data" in st.session_state and st.session_state.sorted_table_data:
-    paginate_table(st.session_state.sorted_table_data, key_prefix="sorted_table")
-
-# GROUP BY AND AGGREGATE
-st.write("## Group By and Aggregate")
-
+# ==========================
+# GROUP & AGGREGATE
+# ==========================
+st.header("Step 3: Group and Aggregate")
 group_col = st.selectbox("Select column to group by", cols, key="group_col")
 agg_col = st.selectbox("Select column to aggregate", cols, key="agg_col")
-agg_func_name = st.selectbox("Select aggregation function", ["count", "sum", "avg", "min", "max"], key="agg_func")
+agg_func_name = st.selectbox("Aggregation Function", ["count", "sum", "avg", "min", "max"], key="agg_func")
 
-# define aggregation logic
+# define aggregation function
 if agg_func_name == "count":
     agg_func = lambda vals: len(vals)
 elif agg_func_name == "sum":
@@ -104,13 +107,43 @@ elif agg_func_name == "min":
 elif agg_func_name == "max":
     agg_func = lambda vals: max(vals)
 
-if st.button("Run Group By"):
-    grouped = group_by_aggregate(data, group_col, agg_col, agg_func)
-    table_ready = [[group_col, f"{agg_func_name}({agg_col})"]] + [
-        [key, val] for key, val in grouped.items()
-    ]
-    st.session_state.grouped_table_data = table_ready
+# ==========================
+# RUN ALL STEPS
+# ==========================
+if st.button("Run All Steps"):
+    current_data = data
 
-# display after grouping
-if "grouped_table_data" in st.session_state and st.session_state.grouped_table_data:
-    paginate_table(st.session_state.grouped_table_data, key_prefix="grouped_table")
+    # applies filter
+    if filter_col and filter_value:
+        current_data = filter_data(current_data, filter_col, selected_op, filter_value)
+        st.session_state.filters_applied = (filter_col, selected_op, filter_value)
+
+    # applies sort
+    if sort_col:
+        current_data = sort_data(current_data, sort_col, order_by)
+        st.session_state.sort_applied = (sort_col, order_by)
+
+    # applies group & aggregate
+    if group_col and agg_col and agg_func_name:
+        grouped = group_by_aggregate(current_data, group_col, agg_col, agg_func)
+        current_data = [dict(zip([group_col, f"{agg_func_name}({agg_col})"], [k, v])) for k, v in grouped.items()]
+        st.session_state.group_applied = (group_col, agg_col, agg_func_name)
+        st.session_state.processed_table = format_for_table(current_data)
+
+    # savese final processed data
+    st.session_state.processed_data = current_data
+
+# ==========================
+# DISPLAY FINAL TABLE
+# ==========================
+st.header("Step 4: View Final Table")
+
+if "processed_table" in st.session_state:
+    table_ready = st.session_state.processed_table
+elif "processed_data" in st.session_state: # formats table if needed
+    table_ready = format_for_table(st.session_state.processed_data)
+else: # no processing done, shows original table
+    table_ready = table_data
+
+with st.expander(f"View {dataset_name} Data Table"):
+    paginate_table(table_ready, key_prefix=dataset_name.replace(" ", "_"))
