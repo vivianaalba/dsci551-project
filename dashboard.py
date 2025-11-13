@@ -1,23 +1,27 @@
 import streamlit as st
-from paginate_table import paginate_table
 from read_csv import read_csv
 from filter_data import filter_data
 from sort_data import sort_data
 from aggregate import group_by_aggregate
+from join import inner_join, left_join
 
 # ==========================
 # DATA PATHS
 # ==========================
-toy_data_path = "data/toy_data_cereals.csv"
+# toy_cereal = "data/toy_data_cereals.csv"
+countries_path = "data/countries_of_the_world.csv"
 food_imports_path = "data/FoodImports.csv"
-countries_path = "data/countries.csv"
+
+# Define table 1 and table 2 for the join function
+table1 = read_csv(countries_path)
+table2 = read_csv(food_imports_path)
 
 # ==========================
 # HELPER FUNCTIONS
 # ==========================
 def format_for_table(data):
-    """Convert list-of-dicts into table format for paginate_table."""
-    if not data:
+    # Convert list of dicts into table format for paginate_table
+    if not data: 
         return []
     headers = list(data[0].keys())
     rows = [[row[h] for h in headers] for row in data]
@@ -25,7 +29,6 @@ def format_for_table(data):
 
 @st.cache_data
 def load_data(path, format=None):
-    """Load CSV using read_csv; optionally format for table display."""
     data = read_csv(path)
     if format == "table":
         return format_for_table(data)
@@ -36,7 +39,7 @@ def load_data(path, format=None):
 # ==========================
 datasets = {
     "Food Imports": (load_data(food_imports_path), load_data(food_imports_path, "table")),
-    "Toy Cereals": (load_data(toy_data_path), load_data(toy_data_path, "table")),
+    # "Toy Cereals": (load_data(toy_data_path), load_data(toy_data_path, "table")),
     "Countries": (load_data(countries_path), load_data(countries_path, "table")),
 }
 
@@ -108,6 +111,47 @@ elif agg_func_name == "max":
     agg_func = lambda vals: max(vals)
 
 # ==========================
+# JOIN SECTION 
+# ==========================
+st.header("Step 4: Join Two Datasets")
+
+# Preview first 10 rows of each table, as in other steps
+st.subheader("Preview of Table 1")
+st.dataframe(table1[:10])
+st.subheader("Preview of Table 2")
+st.dataframe(table2[:10])
+
+columns1 = list(table1[0].keys()) if table1 else []
+columns2 = list(table2[0].keys()) if table2 else []
+
+# User selects which column from each table to join on
+join_col1 = st.selectbox("Select join column from Table 1", columns1, key="join_col1")
+join_col2 = st.selectbox("Select join column from Table 2", columns2, key="join_col2")
+
+join_type = st.selectbox("Join type", ["inner", "left"], key="join_type")
+
+if st.button("Run Join"):
+    if join_type == "inner":
+        joined = inner_join(table1, table2, join_col1, join_col2)
+    else:
+        joined = left_join(table1, table2, join_col1, join_col2)
+    st.session_state["joined_data"] = joined
+    st.session_state["joined_applied"] = (join_col1, join_col2, join_type)
+
+# Show joined table just like groupby or filtered output
+if "joined_data" in st.session_state:
+    st.subheader("Joined Result (first 20 rows)")
+    st.dataframe(st.session_state["joined_data"][:20])
+    import pandas as pd
+    df = pd.DataFrame(st.session_state["joined_data"])
+    st.download_button(
+        "Download Joined CSV",
+        data=df.to_csv(index=False),
+        file_name="joined.csv",
+        mime="text/csv"
+    )
+
+# ==========================
 # RUN ALL STEPS
 # ==========================
 if st.button("Run All Steps"):
@@ -147,3 +191,5 @@ else: # no processing done, shows original table
 
 with st.expander(f"View {dataset_name} Data Table"):
     paginate_table(table_ready, key_prefix=dataset_name.replace(" ", "_"))
+
+
