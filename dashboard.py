@@ -4,6 +4,7 @@ from filter_data import filter_data
 from sort_data import sort_data
 from aggregate import group_by_aggregate
 from join import inner_join, left_join
+from paginate_table import paginate_table
 
 # ==========================
 # DATA PATHS
