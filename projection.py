@@ -10,6 +10,7 @@
 ### 4. Documentation and Testing --> write tests to cover edge cases such as zero vectors, orthogonal vectors and vegtors with negative components
 
 from typing import List, Union # Are we allowed to use this?? 
+
 def dot(a: List[Union[int, float]], b: List[Union[int, float]]) -> float:
     # Compute the dot product of two vectors 
     # Raise ValueError if dimensions do not match or inputs are invalid
