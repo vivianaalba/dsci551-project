@@ -1,11 +1,10 @@
 # dsci551-project
 A data-driven web application that parses, filters, groups, aggregates, and joins CSV datasets using custom Python functions.
 
-##Overview
+## Overview
 This project implements an Interactive Data Processing Dashboard using Python and Streamlit. The dashboard allows users to explore and analyze datasets using common data operations such as filtering, sorting, grouping, aggregating, and joining tables. All features are optional, giving users flexibility in how they manipulate and view data. <br>
 
 The project is designed to mimic basic SQL operations without using libraries like pandas or json for the main data operations, fulfilling educational goals of understanding data processing under the hood. <br>
----
 
 ## Features
 
@@ -47,7 +46,6 @@ The project is designed to mimic basic SQL operations without using libraries li
    - Uses a custom pagination function to display tables in manageable pages.  
    - Improves readability and reduces scrolling fatigue.  
 
----
 
 ## Setup Instructions
 
@@ -57,21 +55,30 @@ The project is designed to mimic basic SQL operations without using libraries li
    cd <repository-folder>
 
 2. **Install Dependencies**
+   ```bash
     pip install -r requirements.txt
 
-3. **Run Dashboard**
+4. **Run Dashboard**
+   ```bash
     streamlit run dashboard.py
 
 
 ## Using the Dashboard
-	•	Select a dataset from the dropdown menu.
-	•	Optionally filter, sort, group & aggregate the data.
-	•	Optionally join two tables using matching columns.
-	•	Use “Run All Steps” to apply selected operations sequentially.
-	•	View processed data in the paginated table and download CSV for joined data.
-	•	Click “Reset All” to restart the analysis with the original dataset.
+1. Select a dataset from the dropdown menu.
+2. Optionally filter, sort, group & aggregate the data.
+3. Optionally join two tables using matching columns.
+4. Use “Run All Steps” to apply selected operations sequentially.
+5. View processed data in the paginated table and download CSV for joined data.
+6. Click “Reset All” to restart the analysis with the original dataset.
 
-# File Structure
+## Implementation Notes
+- No external libraries for data processing are used; all filtering, sorting, grouping, and joins are implemented manually.
+- Column type detection is performed dynamically for each dataset to ensure proper operator selection.
+- Optional feature usage: Users can apply any combination of steps; skipping a step leaves the dataset unchanged.
+- Scalability: Tables are paginated to handle larger datasets. Caching is implemented via st.cache_data for faster reloads.
+
+## File Structure
+```bash
 project-root/
 │
 ├─ dashboard.py           # Main Streamlit app
@@ -88,10 +95,5 @@ project-root/
 ├─ data/
 │   ├─ countries.csv
 │   └─ FoodImports.csv
+├─ requirements.txt
 └─ README.md
-
-# Implementation Notes
-	•	No external libraries for data processing are used; all filtering, sorting, grouping, and joins are implemented manually.
-	•	Column type detection is performed dynamically for each dataset to ensure proper operator selection.
-	•	Optional feature usage: Users can apply any combination of steps; skipping a step leaves the dataset unchanged.
-	•	Scalability: Tables are paginated to handle larger datasets. Caching is implemented via st.cache_data for faster reloads.
