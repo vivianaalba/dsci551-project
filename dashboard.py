@@ -1,10 +1,12 @@
 import streamlit as st  # to run: streamlit run dashboard.py
 from read_csv import read_csv
-from filter_data import filter_data
+from filter_data import filter_data, filter_rows, eval_condition
 from sort_data import sort_data
 from aggregate import group_by_aggregate
 from join import inner_join, left_join
 from paginate_table import paginate_table
+from chunked_csv_read import chunked_csv_reader
+
 
 # ==========================
 # DATA PATHS
@@ -16,16 +18,24 @@ food_imports_path = "data/FoodImports.csv"
 # HELPER FUNCTIONS
 # ==========================
 def get_column_types(data):
-    types = {}
+    col_types = {}
     for col in data[0].keys():
+        col_type = None
         for row in data:
+            val = row[col]
+            if val is None or val == '':
+                continue  # skip missing/null values in type detection
             try:
-                float(row[col])
-                types[col] = 'numeric'
+                float(val)
+                col_type = 'numeric'
             except ValueError:
-                types[col] = 'string'
-                break  # no need to check further rows
-    return types
+                col_type = 'string'
+                break  # if any value for col is non-numeric, treat as string
+        if col_type is None:
+            col_type = 'string'  # default if all values are null
+        col_types[col] = col_type
+    return col_types
+
 
 def format_for_table(data):
     if not data:
@@ -55,7 +65,6 @@ table1_col_types = get_column_types(table1)
 
 table2 = read_csv(food_imports_path)
 table2_col_types = get_column_types(table2)
-
 
 # ==========================================================
 #                   DASHBOARD START
@@ -116,7 +125,7 @@ else:
     cols = []
 
 # Step 1a: choose column
-filter_col = st.selectbox("Column to filter by", cols)
+filter_col = st.selectbox("Column to filter by", cols, key="filter_col")
 
 # Step 1b: determine column type
 col_types = get_column_types(current_data)
@@ -130,7 +139,6 @@ else:
 
 selected_written_op = st.selectbox("Select operator", available_ops)
 
-# Step 1d: map back to raw operator
 operator_map = {
     "equal to": "==",
     "not equal to": "!=",
@@ -141,20 +149,51 @@ operator_map = {
 }
 raw_op = operator_map[selected_written_op]
 
-# Step 1e: enter value
-filter_value = st.text_input("Enter value")
+# Step 1d: enter value
+filter_value = st.text_input("Enter value", key="filter_value")
+
+# Repeated step 1a: Choose column 
+filter_col2 = st.selectbox("Column to filter by", cols, key="filter_col2")
+
+# Repeated step 1b: Determine column type
+col_type2 = col_types.get(filter_col2, 'string')
+
+# Repeated Step 1c: Choose operator based on column type
+if col_type2 =='string':
+    available_ops2 = ["equal to", "not equal to"]
+else:
+    available_ops2 = ["equal to", "not equal to", "greater than", "less than", "greater or equal", "less or equal"]
+
+selected_written_op2 = st.selectbox("Select operator", available_ops2, key="selected_op2")
+
+raw_op2 = operator_map[selected_written_op2]
+
+filter_value2 = st.text_input("Enter value", key="filter_value2")
+
+# Logic to combine filters
+logic_choice = st.radio("Combine filters with", ("AND", "OR"), key="logic")
 
 # Step 1f: apply filter
+# This helps combine filters
 if st.button("Apply Filter"):
-    current_data = filter_data(current_data, filter_col, raw_op, filter_value)
-    st.session_state.current_data = current_data
-    st.session_state.processed_table = None
+    filters = []
+    if filter_value.strip():
+        filters.append((filter_col, raw_op, filter_value))
+    if filter_value2.strip():
+        filters.append((filter_col2, raw_op2, filter_value2))
+    
+    if filters:
+        current_data = filter_rows(current_data, filters, logic=logic_choice)
+        st.session_state.current_data = current_data
+        st.session_state.processed_table = None
+    else:
+        st.warning("Please enter at least one filter value.")
+
 
 # ==========================
 # STEP 2: SORT
 # ==========================
 st.header("Step 2: Sort Dataset")
-
 sort_col = st.selectbox("Select column to sort by", cols)
 order = st.selectbox("Sort order", ["asc", "desc"])
 
@@ -196,7 +235,7 @@ if st.button("Apply Group & Aggregate"):
 # ==========================
 # STEP 4: JOIN DATASETS — now integrated
 # ==========================
-st.header("Step 4: Join Datasets")
+st.header("Step 4: Join Two Datasets")
 
 cols1 = list(table1[0].keys())
 cols2 = list(table2[0].keys())
@@ -239,6 +278,32 @@ if st.button("Run All Steps"):
 
     st.session_state.current_data = pipeline_data
     st.session_state.processed_table = format_for_table(pipeline_data)
+
+# ==========================
+# STEP 6: Chunked Data Viewer
+# ==========================
+
+st.title("Chunked CSV Data Viewer")
+
+dataset_path = "data/FoodImports.csv"
+
+chunk_size = st.number_input(
+    "Number of rows per chunk", 
+    min_value=1, 
+    value=1000, step=1
+)
+
+if st.button("Load Data Chunks"):
+    max_chunks_display = 3  # limit number of chunks displayed for performance
+    chunk_number = 0
+    for chunk in chunked_csv_reader(dataset_path, chunk_size):
+        chunk_number += 1
+        st.write(f"Chunk {chunk_number} (Rows: {len(chunk)}):")
+        headers = list(chunk[0].keys()) if chunk else []
+        table = [headers] + [[row[h] for h in headers] for row in chunk]
+        st.table(table)
+        if chunk_number >= max_chunks_display:
+            break
 
 # ==========================
 # FINAL OUTPUT TABLE (paginated)
