@@ -1,9 +1,11 @@
 import streamlit as st
 from read_csv import read_csv
 from filter_data import filter_data
+from filter_data import filter_rows
 from sort_data import sort_data
 from aggregate import group_by_aggregate
 from join import inner_join, left_join
+from paginate_table import paginate_table
 
 # ==========================
 # DATA PATHS
@@ -19,6 +21,26 @@ table2 = read_csv(food_imports_path)
 # ==========================
 # HELPER FUNCTIONS
 # ==========================
+def get_column_types(data):
+    col_types = {}
+    for col in data[0].keys():
+        col_type = None
+        for row in data:
+            val = row[col]
+            if val is None or val == '':
+                continue  # skip missing/null values in type detection
+            try:
+                float(val)
+                col_type = 'numeric'
+            except ValueError:
+                col_type = 'string'
+                break  # if any value for col is non-numeric, treat as string
+        if col_type is None:
+            col_type = 'string'  # default if all values are null
+        col_types[col] = col_type
+    return col_types
+
+
 def format_for_table(data):
     # Convert list of dicts into table format for paginate_table
     if not data: 
@@ -43,24 +65,58 @@ datasets = {
     "Countries": (load_data(countries_path), load_data(countries_path, "table")),
 }
 
-# ==========================
-# DASHBOARD UI SETUP
-# ==========================
+# tables for JOIN
+table1 = read_csv(countries_path)
+table1_col_types = get_column_types(table1)
+
+table2 = read_csv(food_imports_path)
+table2_col_types = get_column_types(table2)
+
+# ==========================================================
+#                   DASHBOARD START
+# ==========================================================
+
 st.title("Interactive Data Processing Dashboard")
-st.write("Use the controls below to filter, sort, group, and aggregate datasets interactively.")
+# dashboard instructions for users
+st.write("This dashboard lets you interactively explore and analyze two datasets using several optional tools. " \
+         "Start by selecting a dataset from the sidebar. You can filter the data by " \
+         "choosing a column and entering a value, sort the results by any column, or " \
+         "group and aggregate the data to compute summary statistics. If you want to combine " \
+         "datasets, you can also perform inner or left joins using matching keys from each table. " \
+         "All features are optional, so you can use as many or as few as you need. After applying your " \
+         "selections, the processed results will appear below along with an automatically " \
+         "paginated table you can scroll through. This makes it easy to examine raw data, " \
+         "transformed data, and joined tables in a clean, organized view."
+        )
 
-# allows users to select dataset for exploration
+st.subheader("Preview Table 1 (Countries)")
+st.dataframe(table1[:10])
+
+st.subheader("Preview Table 2 (Food Imports)")
+st.dataframe(table2[:10])
+
+# ==========================
+# DATASET SELECTION
+# ==========================
 dataset_name = st.selectbox("Select a dataset:", list(datasets.keys()))
-data, table_data = datasets[dataset_name]
-cols = list(data[0].keys())
 
-# resets session state
+# original dataset + table version
+original_data, original_table = datasets[dataset_name]
+
+# Determine starting dataset for pipeline:
+# If we JUST ran a join → use joined data
+# Otherwise → use original
+if "joined_data" in st.session_state:
+    current_data = st.session_state.joined_data
+else:
+    current_data = original_data
+
+# ==========================
+# RESET BUTTON
+# ==========================
 if st.button("Reset All"):
-    st.session_state.processed_data = None
-    st.session_state.processed_table = None
-    st.session_state.filters_applied = None
-    st.session_state.sort_applied = None
-    st.session_state.group_applied = None
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
     st.cache_data.clear()
     st.experimental_rerun()
 
@@ -69,26 +125,71 @@ if st.button("Reset All"):
 # ==========================
 st.header("Step 1: Filter Dataset")
 
+if current_data:
+    cols = list(current_data[0].keys())
+else:
+    cols = []
+
+# Step 1a: choose column
+filter_col = st.selectbox("Column to filter by", cols)
+
+# Step 1b: determine column type
+col_types = get_column_types(current_data)
+col_type = col_types.get(filter_col, 'string')
+
+# Step 1c: choose operator based on column type
+if col_type == 'string':
+    available_ops = ["equal to", "not equal to"]
+else:
+    available_ops = ["equal to", "not equal to", "greater than", "less than", "greater or equal", "less or equal"]
+
+selected_written_op = st.selectbox("Select operator", available_ops)
+
 operator_map = {
-    "==": "equal to",
-    "!=": "not equal to",
-    ">": "greater than",
-    "<": "less than",
-    ">=": "greater than or equal to",
-    "<=": "less than or equal to"
+    "equal to": "==",
+    "not equal to": "!=",
+    "greater than": ">",
+    "less than": "<",
+    "greater or equal": ">=",
+    "less or equal": "<="
 }
 
-filter_col = st.selectbox("Select column to filter by", cols, key="filter_col")
-selected_written_op = st.selectbox("Select operator", list(operator_map.values()), key="filter_op")
-selected_op = [op for op, written in operator_map.items() if written == selected_written_op][0]
-filter_value = st.text_input("Enter value", key="filter_value")
+
+raw_op = operator_map[selected_written_op]
+
+# Step 1e: enter value
+filter_value = st.text_input("Enter value")
+
+# Select logic separately
+logic_choice = st.radio("Combine filters with", ("AND", "OR"), key="logic")
+
+# Step 1f: apply filter
+if st.button("Apply Operator Filter"):
+    current_data = filter_data(current_data, filter_col, raw_op, filter_value)
+    st.session_state.current_data = current_data
+    st.session_state.processed_table = None
+
+# Button to apply all filters with logic
+if st.button("Apply Logic Filter"):
+    st.session_state.logic = logic_choice
+    if st.session_state.filters:
+        st.session_state.filtered_data = filter_rows(data, st.session_state.filters, logic=st.session_state.logic)
+        st.success(f"Applied logic: {st.session_state.logic} across all filters.")
+    else:
+        st.warning("No filters to combine.")
+
 
 # ==========================
 # SORT
 # ==========================
 st.header("Step 2: Sort Dataset")
-sort_col = st.selectbox("Select column to sort by", cols, key="sort_col")
-order_by = st.selectbox("Select sort order", ["asc", "desc"], key="sort_order")
+sort_col = st.selectbox("Select column to sort by", cols)
+order = st.selectbox("Sort order", ["asc", "desc"])
+
+if st.button("Apply Sort"):
+    current_data = sort_data(current_data, sort_col, order)
+    st.session_state.current_data = current_data
+    st.session_state.processed_table = None
 
 # ==========================
 # GROUP & AGGREGATE
@@ -100,96 +201,83 @@ agg_func_name = st.selectbox("Aggregation Function", ["count", "sum", "avg", "mi
 
 # define aggregation function
 if agg_func_name == "count":
-    agg_func = lambda vals: len(vals)
+    func = lambda vals: len(vals)
 elif agg_func_name == "sum":
-    agg_func = lambda vals: sum(vals)
+    func = lambda vals: sum(vals)
 elif agg_func_name == "avg":
-    agg_func = lambda vals: sum(vals) / len(vals) if vals else 0
+    func = lambda vals: sum(vals) / len(vals) if vals else 0
 elif agg_func_name == "min":
-    agg_func = lambda vals: min(vals)
+    func = lambda vals: min(vals)
 elif agg_func_name == "max":
-    agg_func = lambda vals: max(vals)
+    func = lambda vals: max(vals)
+
+if st.button("Apply Group & Aggregate"):
+    grouped = group_by_aggregate(current_data, group_col, agg_col, func)
+    current_data = [
+        {group_col: key, f"{agg_func_name}({agg_col})": value}
+        for key, value in grouped.items()
+    ]
+    st.session_state.current_data = current_data
+    st.session_state.processed_table = format_for_table(current_data)
 
 # ==========================
 # JOIN SECTION 
 # ==========================
 st.header("Step 4: Join Two Datasets")
 
-# Preview first 10 rows of each table, as in other steps
-st.subheader("Preview of Table 1")
-st.dataframe(table1[:10])
-st.subheader("Preview of Table 2")
-st.dataframe(table2[:10])
+st.header("Step 4: Join Datasets")
 
-columns1 = list(table1[0].keys()) if table1 else []
-columns2 = list(table2[0].keys()) if table2 else []
+cols1 = list(table1[0].keys())
+cols2 = list(table2[0].keys())
 
-# User selects which column from each table to join on
-join_col1 = st.selectbox("Select join column from Table 1", columns1, key="join_col1")
-join_col2 = st.selectbox("Select join column from Table 2", columns2, key="join_col2")
+join_key_1 = st.selectbox("Join column from Countries", cols1)
+join_key_2 = st.selectbox("Join column from Food Imports", cols2)
 
-join_type = st.selectbox("Join type", ["inner", "left"], key="join_type")
+join_type = st.selectbox("Join type", ["inner", "left"])
 
 if st.button("Run Join"):
     if join_type == "inner":
-        joined = inner_join(table1, table2, join_col1, join_col2)
+        joined = inner_join(table1, table2, join_key_1, join_key_2)
     else:
-        joined = left_join(table1, table2, join_col1, join_col2)
-    st.session_state["joined_data"] = joined
-    st.session_state["joined_applied"] = (join_col1, join_col2, join_type)
+        joined = left_join(table1, table2, join_key_1, join_key_2)
 
-# Show joined table just like groupby or filtered output
-if "joined_data" in st.session_state:
-    st.subheader("Joined Result (first 20 rows)")
-    st.dataframe(st.session_state["joined_data"][:20])
-    import pandas as pd
-    df = pd.DataFrame(st.session_state["joined_data"])
-    st.download_button(
-        "Download Joined CSV",
-        data=df.to_csv(index=False),
-        file_name="joined.csv",
-        mime="text/csv"
-    )
+    st.session_state.joined_data = joined
+    st.success("Join completed! The join result is now your active dataset.")
+
+    st.session_state.processed_table = None
+    st.experimental_rerun()
 
 # ==========================
 # RUN ALL STEPS
 # ==========================
 if st.button("Run All Steps"):
-    current_data = data
+    pipeline_data = st.session_state.get("joined_data", original_data)
 
-    # applies filter
-    if filter_col and filter_value:
-        current_data = filter_data(current_data, filter_col, selected_op, filter_value)
-        st.session_state.filters_applied = (filter_col, selected_op, filter_value)
+    # Filter
+    pipeline_data = filter_data(pipeline_data, filter_col, raw_op, filter_value)
 
-    # applies sort
-    if sort_col:
-        current_data = sort_data(current_data, sort_col, order_by)
-        st.session_state.sort_applied = (sort_col, order_by)
+    # Sort
+    pipeline_data = sort_data(pipeline_data, sort_col, order)
 
-    # applies group & aggregate
-    if group_col and agg_col and agg_func_name:
-        grouped = group_by_aggregate(current_data, group_col, agg_col, agg_func)
-        current_data = [dict(zip([group_col, f"{agg_func_name}({agg_col})"], [k, v])) for k, v in grouped.items()]
-        st.session_state.group_applied = (group_col, agg_col, agg_func_name)
-        st.session_state.processed_table = format_for_table(current_data)
+    # Group
+    grouped = group_by_aggregate(pipeline_data, group_col, agg_col, func)
+    pipeline_data = [
+        {group_col: k, f"{agg_func_name}({agg_col})": v}
+        for k, v in grouped.items()
+    ]
 
-    # savese final processed data
-    st.session_state.processed_data = current_data
+    st.session_state.current_data = pipeline_data
+    st.session_state.processed_table = format_for_table(pipeline_data)
 
 # ==========================
 # DISPLAY FINAL TABLE
 # ==========================
-st.header("Step 4: View Final Table")
+st.header("Final Output Table")
 
-if "processed_table" in st.session_state:
-    table_ready = st.session_state.processed_table
-elif "processed_data" in st.session_state: # formats table if needed
-    table_ready = format_for_table(st.session_state.processed_data)
-else: # no processing done, shows original table
-    table_ready = table_data
+final_data = st.session_state.get("current_data", current_data)
+final_table = format_for_table(final_data)
 
-with st.expander(f"View {dataset_name} Data Table"):
-    paginate_table(table_ready, key_prefix=dataset_name.replace(" ", "_"))
+with st.expander("View Processed Table"):
+    paginate_table(final_table, key_prefix="final")
 
 

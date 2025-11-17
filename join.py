@@ -37,6 +37,7 @@ def read_and_join(file1, file2, key1, key2, join_type='inner'):
 #     return result
 
 # --- SQL-like table join functions ---
+# Inner join: Combines only rows with a match in both tables
 def inner_join(table1, table2, key1, key2):
     """
     Perform an inner join on two tables (lists of dicts) using specified key(s).
@@ -77,7 +78,7 @@ def inner_join(table1, table2, key1, key2):
             result.append(merged_row)
     return result
 
-
+# Left Join: All rows from the left table plus matching info from the right
 def left_join(table1, table2, key1, key2):
     """
     Perform a left join on two tables (lists of dicts) using specified key(s).
