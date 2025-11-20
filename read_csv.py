@@ -2,53 +2,55 @@ from validate_path import validate_file
 from parser import parse_csv_line
 from chunked_csv_read import chunked_csv_reader
 
-# file reading logic
-# default headers = None, will use first line of data
-# default separator = comma
-# def read_csv(file_path, table_format=False):
-#     # make sure file / file name are valid and exist
-#     if not validate_file(file_path):
-#         return False
-
-    
-
-#     data = []
-
-#     with open(file_path, "r", encoding="utf-8") as f:
-#         lines = f.read().splitlines()
-
-#     # First line = header row
-#     headers = parse_csv_line(lines[0])
-
-#     # Parse each data line manually
-#     for line in lines[1:]:
-#         if not line.strip():
-#             continue  # skip empty lines
-#         values = parse_csv_line(line)
-#         # pad shorter rows if needed
-#         while len(values) < len(headers):
-#             values.append('')
-#         row_dict = dict(zip(headers, values))
-#         data.append(row_dict)
-
-#     if table_format:
-#         table = [headers] + [[row[h] for h in headers] for row in data]
-#         return table
-#     else:
-#         return data
-
+######## IMPLEMENTING CHUNK SIZE READING ########
 # This would be used if we want to omit the file size check and always perform chunked reading
 # Chunked reading works file for small and large files
 def read_csv(file_path, chunk_size=1000, table_format=False):
+    # Validate file existence or path correctness 
+    if not validate_file(file_path):
+        return False
+
     data = []
-    for chunk in chunked_csv_reader(file_path, chunk_size=chunk_size):
+
+    # If chunk_size is None or 0, fallback to full file read
+    if not chunk_size:
+        with open(file_path, "r", encoding="utf-8") as f:
+            lines = f.read().splitlines()
+        headers = parse_csv_line(lines[0])
+        headers = [h.lower() for h in headers]
+
+        for line in lines[1:]:
+            if not line.strip():
+                continue  # skip empty lines
+            values = parse_csv_line(line)
+            # pad shorter rows if needed
+            while len(values) < len(headers):
+                values.append('')
+            row_dict = {k: (v.lower() if isinstance(v, str) else v) for k, v in zip(headers, values)}
+            data.append(row_dict)
+
         if table_format:
-            headers = list(chunk[0].keys()) if chunk else []
-            table_chunk = [headers] + [[row[h] for h in headers] for row in chunk]
+            table = [headers] + [[row[h] for h in headers] for row in data]
+            return table
+        else:
+            return data
+            
+    # For chunked reading, use chunked_csv_reader
+    for chunk in chunked_csv_reader(file_path, chunk_size=chunk_size):
+        # Lowercase keys for all rows in chunk
+        new_chunk = [
+            {k.lower(): (v.lower() if isinstance(v, str) else v) for k, v in row.items()}
+            for row in chunk 
+        ]
+        if table_format:
+            headers = list(new_chunk[0].keys()) if new_chunk else []
+            # Lowercase the headers here
+            headers = [h.lower() for h in headers]
+            table_chunk = [headers] + [[row[h] for h in headers] for row in new_chunk]
             # You can choose to collect all chunks or yield each
             data.append(table_chunk)  # if accumulating all chunks
         else:
-            data.extend(chunk)  # flatten chunks into one list
+            data.extend(new_chunk)  # flatten chunks into one list
 
     if table_format:
         # Flatten tables from all chunks into a single table
@@ -62,9 +64,6 @@ def read_csv(file_path, chunk_size=1000, table_format=False):
         return table
     else:
         return data
-
-
-
 
 def parse_csv_line(line):
 
@@ -101,6 +100,8 @@ def parse_csv_line(line):
     # remove outer quotes if present
     fields = [f[1:-1] if len(f) >= 2 and f.startswith('"') and f.endswith('"') else f for f in fields]
     return fields
+
+
 
 
 
