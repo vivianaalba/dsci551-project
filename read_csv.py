@@ -1,5 +1,5 @@
 from validate_path import validate_file
-from parser import parse_csv_line
+from parser import parse_csv_line, parse_field
 from chunked_csv_read import chunked_csv_reader
 
 ######## IMPLEMENTING CHUNK SIZE READING ########
@@ -23,10 +23,29 @@ def read_csv(file_path, chunk_size=1000, table_format=False):
             if not line.strip():
                 continue  # skip empty lines
             values = parse_csv_line(line)
-            # pad shorter rows if needed
-            while len(values) < len(headers):
-                values.append('')
-            row_dict = {k: (v.lower() if isinstance(v, str) else v) for k, v in zip(headers, values)}
+
+            # Ensure row length matches headers
+            if len(values) < len(headers):
+                values += [''] * (len(headers) - len(values))
+            elif len(values) > len(headers):
+                values = values[:len(headers)]
+
+            # Clean values: strip + lowercase for strings
+            cleaned_values = []
+            for v in values:
+                if isinstance(v, str):
+                    cleaned = v.strip()
+                    # Try numeric normalization
+                    try:
+                        normalized = cleaned.replace(",", ".")
+                        cleaned_values.append(float(normalized))
+                        continue
+                    except ValueError:
+                        cleaned_values.append(cleaned.lower())
+                else:
+                    cleaned_values.append(v)
+
+            row_dict = {k: v for k, v in zip(headers, cleaned_values)}
             data.append(row_dict)
 
         if table_format:
@@ -38,15 +57,35 @@ def read_csv(file_path, chunk_size=1000, table_format=False):
     # For chunked reading, use chunked_csv_reader
     for chunk in chunked_csv_reader(file_path, chunk_size=chunk_size):
         # Lowercase keys for all rows in chunk
-        new_chunk = [
-            {k.lower(): (v.lower() if isinstance(v, str) else v) for k, v in row.items()}
-            for row in chunk 
-        ]
+        new_chunk = []
+        for row in chunk:
+            clean_row = {}
+            for k, v in row.items():
+                key = k.lower().strip()
+                if isinstance(v, str):
+                    cleaned = v.strip()
+                    # Try numeric normalization
+                    try:
+                        normalized = cleaned.replace(",", ".")
+                        clean_row[key] = float(normalized)
+                    except ValueError:
+                        clean_row[key] = cleaned.lower()
+                else:
+                    clean_row[key] = v
+            new_chunk.append(clean_row)
         if table_format:
             headers = list(new_chunk[0].keys()) if new_chunk else []
             # Lowercase the headers here
-            headers = [h.lower() for h in headers]
-            table_chunk = [headers] + [[row[h] for h in headers] for row in new_chunk]
+            headers = [h.lower().strip() for h in headers]
+
+            table_rows = []
+            for row in new_chunk:
+                row_list = []
+                for h in headers:
+                    row_list.append(row.get(h, ''))
+                table_rows.append(row_list)
+
+            table_chunk = [headers] + table_rows
             # You can choose to collect all chunks or yield each
             data.append(table_chunk)  # if accumulating all chunks
         else:
@@ -89,20 +128,12 @@ def parse_csv_line(line):
 
         elif char == ',' and not in_quotes:
             # Comma outside quotes = new field
-            fields.append(field.strip())
+            fields.append(parse_field(field))
             field = ""
 
         else:
             field += char
         i += 1
 
-    fields.append(field.strip())  # last field
-    # remove outer quotes if present
-    fields = [f[1:-1] if len(f) >= 2 and f.startswith('"') and f.endswith('"') else f for f in fields]
+    fields.append(parse_field(field))  # last field
     return fields
-
-
-
-
-
-

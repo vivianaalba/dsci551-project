@@ -8,7 +8,8 @@ def parse_object(field):
     content = field.strip()[1:-1].strip()
     obj = {}
     if not content:
-        return obj # empty object 
+        return obj  # empty object
+
     # Split by commas for pairs
     pairs = content.split(',')
     for pair in pairs:
@@ -17,57 +18,186 @@ def parse_object(field):
             key = key.strip().strip('"').strip("'")
             # Delegate value parsing to parse_field for conversion
             value = parse_field(value)
-            obj[key] = value 
+            obj[key] = value
         else:
             # Malformed pair, set value as None
-            obj[pair.strip()] = None 
-    return obj 
+            obj[pair.strip()] = None
+    return obj
+
 
 def parse_field(field):
-    field = field.strip()
+    # Handle None explicitly
+    if field is None:
+        return None
+
+    # If it's already numeric, keep it
+    if isinstance(field, (int, float)):
+        return field
+
+    # Convert to string safely
+    field = str(field).strip()
+
+    # Empty cell
     if field == '':
         return None
+
+    # Colon by itself
     if field == ':':
-        return field 
-    # Try parsing as integer
+        return field
+
+    # ---- NUMERIC NORMALIZATION ----
+    # Remove spaces: "1 000" → "1000"
+    cleaned = field.replace(" ", "")
+
+    # Handle thousands separators & decimal commas
+    if "," in cleaned and "." in cleaned:
+        # If comma appears AFTER last dot → decimal comma
+        if cleaned.rfind(",") > cleaned.rfind("."):
+            cleaned = cleaned.replace(".", "")  # remove thousands dots
+            cleaned = cleaned.replace(",", ".")  # decimal comma → dot
+        else:
+            # U.S. thousand comma
+            cleaned = cleaned.replace(",", "")
+    elif "," in cleaned:
+        # Only comma exists → treat as decimal comma
+        cleaned = cleaned.replace(",", ".")
+
+    # Try integer
     try:
-        return int(field)
+        return int(cleaned)
     except ValueError:
-        pass 
-    # Try parsing as float
+        pass
+
+    # Try float
     try:
-        return float(field)
+        return float(cleaned)
     except ValueError:
-        pass 
-    # Try custom object parse
+        pass
+
+    # Try parsing object
     if field.startswith('{') and field.endswith('}'):
         return parse_object(field)
-    # Remove quotes and unescape inner quotes for quoted strings
+
+    # Handle quoted strings
     if field.startswith('"') and field.endswith('"'):
         return field[1:-1].replace('""', '"')
-    return field 
+
+    # Default: return cleaned string
+    return field
+
 
 def parse_csv_line(line):
     fields = []
     field = ''
     inside_quotes = False
     i = 0
+
     while i < len(line):
         char = line[i]
+
         if char == '"':
             # If inside quotes, check for escaped quote
             if inside_quotes and i + 1 < len(line) and line[i + 1] == '"':
                 field += '"'
-                i += 1  # Skip the escaped quote
+                i += 1  # skip escaped quote
             else:
                 inside_quotes = not inside_quotes
+
         elif char == ',' and not inside_quotes:
             fields.append(parse_field(field))
             field = ''
+
         else:
             field += char
+
         i += 1
-    fields.append(parse_field(field))  # Add the last field
+
+    fields.append(parse_field(field))  # last field
     return fields
 
 
+
+
+
+# # parse_object does the following:
+# # Converts numeric fields to int or float
+# # Recognizes colons as a distinct token
+# # Parses simple objects formatted as {key: value, ...}
+
+# def parse_object(field):
+#     # Remove surrounding braces if present
+#     content = field.strip()[1:-1].strip()
+#     obj = {}
+#     if not content:
+#         return obj # empty object 
+#     # Split by commas for pairs
+#     pairs = content.split(',')
+#     for pair in pairs:
+#         if ':' in pair:
+#             key, value = pair.split(':', 1)
+#             key = key.strip().strip('"').strip("'")
+#             # Delegate value parsing to parse_field for conversion
+#             value = parse_field(value)
+#             obj[key] = value 
+#         else:
+#             # Malformed pair, set value as None
+#             obj[pair.strip()] = None 
+#     return obj 
+
+# def parse_field(field):
+#     field = field.strip()
+#     if field == '':
+#         return None
+#     if field == ':':
+#         return field
+
+#     # ---- NEW: Normalize European decimals & thousands separators ----
+#     normalized = field.replace(",", ".")   # decimal comma → decimal dot
+#     normalized = normalized.replace(" ", "")  # remove spaces (e.g., "1 000")
+#     normalized = normalized.replace(".", "", normalized.count(".") - 1)
+#     # This removes all but the LAST dot → handles "1.234.567,89" & "1,234.56"
+
+#     # Try parsing integer
+#     try:
+#         return int(normalized)
+#     except ValueError:
+#         pass
+
+#     # Try parsing float
+#     try:
+#         return float(normalized)
+#     except ValueError:
+#         pass
+
+#     # Try parsing object
+#     if field.startswith('{') and field.endswith('}'):
+#         return parse_object(field)
+
+#     # Handle quoted strings
+#     if field.startswith('"') and field.endswith('"'):
+#         return field[1:-1].replace('""', '"')
+
+#     return field
+
+# def parse_csv_line(line):
+#     fields = []
+#     field = ''
+#     inside_quotes = False
+#     i = 0
+#     while i < len(line):
+#         char = line[i]
+#         if char == '"':
+#             # If inside quotes, check for escaped quote
+#             if inside_quotes and i + 1 < len(line) and line[i + 1] == '"':
+#                 field += '"'
+#                 i += 1  # Skip the escaped quote
+#             else:
+#                 inside_quotes = not inside_quotes
+#         elif char == ',' and not inside_quotes:
+#             fields.append(parse_field(field))
+#             field = ''
+#         else:
+#             field += char
+#         i += 1
+#     fields.append(parse_field(field))  # Add the last field
+#     return fields
