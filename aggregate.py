@@ -1,3 +1,5 @@
+from parser import parse_field
+
 # Basic group by function
 def group_by(data, key):
     groups = {}
@@ -15,9 +17,9 @@ def group_by_aggregate(data, group_col, agg_col, agg_func):
     for key_val, rows in groups.items():
         try:
             # Try converting aggregation column values to numeric
-            numeric_vals = [float(r[agg_col]) for r in rows]
+            numeric_vals = [float(parse_field(r[agg_col])) for r in rows]
         except ValueError:
-            numeric_vals = [r[agg_col] for r in rows]
+            numeric_vals = [parse_field(r[agg_col]) for r in rows]
 
         result[key_val] = agg_func(numeric_vals)
     return result

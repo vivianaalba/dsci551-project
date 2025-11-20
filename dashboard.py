@@ -7,6 +7,7 @@ from join import inner_join, left_join
 from paginate_table import paginate_table
 from chunked_csv_read import chunked_csv_reader
 from projection import project
+from limit_data import limit_data
 
 
 # ==========================
@@ -113,7 +114,7 @@ if st.button("Reset All"):
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.cache_data.clear()
-    st.experimental_rerun()
+    st.rerun()
 
 # ==========================
 # STEP 1: FILTER
@@ -164,6 +165,14 @@ if st.button("Apply Filter"):
     except Exception as e:
         st.error(f"Filter error: {e}")
 
+# Clear Filter
+if st.button("Clear Filter"):
+    if "filter_value" in st.session_state:
+        del st.session_state["filter_value"]
+    st.session_state.current_data = original_data
+    st.success("Filter cleared.")
+    st.rerun()
+
 # ==========================
 # STEP 2: PROJECT (SELECT COLUMNS)
 # ==========================
@@ -185,6 +194,14 @@ if st.button("Apply Projection"):
     except ValueError as e:
         st.error(str(e))
 
+# Clear Projection
+if st.button("Clear Projection"):
+    if "selected_columns" in st.session_state:
+        del st.session_state["selected_columns"]
+    st.session_state.current_data = original_data
+    st.success("Projection cleared.")
+    st.rerun()
+
 # ==========================
 # STEP 3: SORT
 # ==========================
@@ -198,6 +215,14 @@ if st.button("Apply Sort"):
     st.session_state.processed_table = format_for_table(current_data)
     st.success("Sort applied.")
 
+# Clear Sort
+if st.button("Clear Sort"):
+    if "sort_col" in st.session_state:
+        del st.session_state["sort_col"]
+    st.session_state.current_data = original_data
+    st.success("Sort cleared.")
+    st.rerun()
+
 # ==========================
 # STEP 4: GROUP + AGGREGATE
 # ==========================
@@ -206,6 +231,13 @@ st.header("Step 4: Group and Aggregate")
 group_col = st.selectbox("Group by column", cols, key="group_col")
 agg_col = st.selectbox("Column to aggregate", cols, key="agg_col")
 agg_func_name = st.selectbox("Aggregation function", ["count", "sum", "avg", "min", "max"])
+
+# Sort aggregated results
+agg_sort_order = st.selectbox(
+    "Sort aggregated results",
+    ["asc", "desc"],
+    key="agg_sort_order"
+)
 
 # Build aggregation functions
 if agg_func_name == "count":
@@ -221,13 +253,32 @@ elif agg_func_name == "max":
 
 if st.button("Apply Group & Aggregate"):
     grouped = group_by_aggregate(current_data, group_col, agg_col, func)
+    result_col_name = f"{agg_func_name}({agg_col})"
+
     current_data = [
-        {group_col: key, f"{agg_func_name}({agg_col})": value}
+        {group_col: key, result_col_name: value}
         for key, value in grouped.items()
     ]
+
+    # apply custom sort using your sort_data function
+    current_data = sort_data(
+        current_data,
+        result_col_name,
+        agg_sort_order
+    )
+
     st.session_state.current_data = current_data
     st.session_state.processed_table = format_for_table(current_data)
     st.success("Group & Aggregate applied.")
+
+# Clear Aggregation
+if st.button("Clear Aggregation"):
+    for key in ["group_col", "agg_col"]:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.session_state.current_data = original_data
+    st.success("Aggregation cleared.")
+    st.rerun()
 
 # ==========================
 # STEP 5: JOIN DATASETS — now integrated
@@ -253,14 +304,35 @@ if st.button("Run Join"):
     st.session_state.processed_table = format_for_table(joined)
     st.success("Join completed! The join result is now your active dataset.")
 
+    # Clear Join
+    if st.button("Clear Join"):
+        if "joined_data" in st.session_state:
+            del st.session_state["joined_data"]
+        st.session_state.current_data = original_data
+        st.success("Join cleared.")
+        st.rerun()
+
     st.session_state.processed_table = None
-    st.experimental_rerun()
+    st.rerun()
 
 # ==========================
 # STEP 6: RUN ALL STEPS AT ONCE
 # ==========================
+
+# current pipeline: JOIN → PROJECT → FILTER → SORT → GROUP + AGGREGATE
+# this pipeline is similar to sql processing order
+
 if st.button("Run All Steps"):
     pipeline_data = st.session_state.get("joined_data", original_data)
+
+    # Optional: Perform JOIN automatically
+    try:
+        if join_type == "inner":
+            pipeline_data = inner_join(table1, table2, join_key_1, join_key_2)
+        else:
+            pipeline_data = left_join(table1, table2, join_key_1, join_key_2)
+    except:
+        pass
 
     # Projection
     if 'selected_columns' in locals():
@@ -321,5 +393,15 @@ st.header("Final Output Table")
 final_data = st.session_state.get("current_data", current_data)
 final_table = format_for_table(final_data)
 
+limit_n = st.number_input(
+    "Limit number of rows to display",
+    min_value=1,
+    step=1,
+    value=len(final_data) if final_data else 1
+)
+
+limited_final_data = limit_data(final_data, limit_n)
+limited_table = format_for_table(limited_final_data)
+
 with st.expander("View Processed Table"):
-    paginate_table(final_table, key_prefix="final")
+    paginate_table(limited_table, key_prefix="final")
