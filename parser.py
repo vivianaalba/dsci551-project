@@ -28,24 +28,35 @@ def parse_field(field):
     if field == '':
         return None
     if field == ':':
-        return field 
-    # Try parsing as integer
+        return field
+
+    # ---- NEW: Normalize European decimals & thousands separators ----
+    normalized = field.replace(",", ".")   # decimal comma → decimal dot
+    normalized = normalized.replace(" ", "")  # remove spaces (e.g., "1 000")
+    normalized = normalized.replace(".", "", normalized.count(".") - 1)
+    # This removes all but the LAST dot → handles "1.234.567,89" & "1,234.56"
+
+    # Try parsing integer
     try:
-        return int(field)
+        return int(normalized)
     except ValueError:
-        pass 
-    # Try parsing as float
+        pass
+
+    # Try parsing float
     try:
-        return float(field)
+        return float(normalized)
     except ValueError:
-        pass 
-    # Try custom object parse
+        pass
+
+    # Try parsing object
     if field.startswith('{') and field.endswith('}'):
         return parse_object(field)
-    # Remove quotes and unescape inner quotes for quoted strings
+
+    # Handle quoted strings
     if field.startswith('"') and field.endswith('"'):
         return field[1:-1].replace('""', '"')
-    return field 
+
+    return field
 
 def parse_csv_line(line):
     fields = []
@@ -69,4 +80,3 @@ def parse_csv_line(line):
         i += 1
     fields.append(parse_field(field))  # Add the last field
     return fields
-
