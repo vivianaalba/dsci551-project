@@ -152,13 +152,27 @@ operator_map = {
 raw_op = operator_map[selected_written_op]
 
 # Step 1d: enter filter value
-
 filter_value = st.text_input("Enter value to filter", key="filter_value")
+
+# Checkbow for chunked filtering 
+chunked_filter = st.checkbox("Use chunked filtering", key = "chunked_filter")
+
+# Chunk size input (only show if chunked filtering enabled)
+chunk_size = 1000
+if chunked_filter:
+    chunk_size = st.number_input(
+        "Chunk size (rows per chunk):",
+        min_value = 1,
+        max_value = 100000,
+        value = 1000, 
+        step = 100, 
+        key = "chunk_size_input"
+    )
 
 # Apply Filter button
 if st.button("Apply Filter"):
     try:
-        current_data = filter_data(current_data, filter_col, raw_op, filter_value)
+        current_data = filter_data(current_data, filter_col, raw_op, filter_value, chunked_filter = chunked_filter, chunk_size = chunk_size)
         st.session_state.current_data = current_data
         st.session_state.processed_table = format_for_table(current_data)
         st.success("Filter applied.")

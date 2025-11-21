@@ -17,27 +17,9 @@ def read_and_join(file1, file2, key1, key2, join_type='inner'):
     elif join_type == 'left':
         return left_join(table1, table2, key1, key2)
 
-# Not sure if we need this yet or not
-# String join function (can be imported from parser.py)
-# def join_strings(separator, iterable):
-#     if not isinstance(separator, str):
-#         raise TypeError(f"Separator must be a string, got {type(separator)}")
-#     if not hasattr(iterable, '__iter__'):
-#         raise TypeError(f"Second argument must be iterable, got {type(iterable)}")
-
-#     result = ""
-#     first_element = True
-#     for item in iterable:
-#         item_str = str(item)
-#         if not first_element:
-#             result += separator
-#         else:
-#             first_element = False
-#         result += item_str
-#     return result
-
 # --- SQL-like table join functions ---
 # Inner join: Combines only rows with a match in both tables
+# Non-matching rows: Excluded
 def inner_join(table1, table2, key1, key2):
     """
     Perform an inner join on two tables (lists of dicts) using specified key(s).
@@ -79,6 +61,7 @@ def inner_join(table1, table2, key1, key2):
     return result
 
 # Left Join: All rows from the left table plus matching info from the right
+# Non-matching rows: Included from left and NULL for right if no match
 def left_join(table1, table2, key1, key2):
     """
     Perform a left join on two tables (lists of dicts) using specified key(s).
@@ -135,27 +118,4 @@ def join_rows_as_string(row, separator=', '):
     """
     return join_strings(separator, [row[key] for key in row])
 
-# --- Example Usage ---
-if __name__ == "__main__":
-    # Example tables
-    table1 = [
-        {"id": 1, "name": "Alice"},
-        {"id": 2, "name": "Bob"},
-        {"id": 3, "name": "Charlie"}
-    ]
-    table2 = [
-        {"user_id": 1, "score": 88},
-        {"user_id": 2, "score": 75},
-        {"user_id": 1, "score": 90}
-    ]
-    inner = inner_join(table1, table2, "id", "user_id")
-    left  = left_join(table1, table2, "id", "user_id")
-    print("Inner Join Results:")
-    for row in inner:
-        print(row)
-    print("Left Join Results:")
-    for row in left:
-        print(row)
-    print("As String:")
-    for row in left:
-        print(join_rows_as_string(row))
+
