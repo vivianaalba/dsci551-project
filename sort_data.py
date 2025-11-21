@@ -11,17 +11,8 @@ def sort_data(data, col, order_by="asc"):
         except ValueError:
             return row[col] # keep as strings if not numbers
 
-    sorted_data = []
-
-    if chunked_sort:
-        # Gather all rows from chunks for global sorting
-        for chunk in chunked_csv_reader(data, chunk_size = chunk_size):
-            sorted_data.extend(chunk)
-
-        # Now sort the combined data
-        sorted_data = quicksort(sorted_Data, key = get_value)
-    else:
-        sorted_Data = quicksort(data, key = get_value)
+    # use your quicksort on the entire dataset, sorting by chosen column
+    sorted_data = quicksort(data, key = get_value)
 
     # reverse if descending
     if order_by == "desc":
