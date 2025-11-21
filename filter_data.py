@@ -1,4 +1,5 @@
 # make a function that filters dataset based on specified col
+from chunked_csv_read import chunked_csv_reader
 
 def filter_data(data, col, operator, value, chunked_filter=False, chunk_size=1000):
     result = []
@@ -33,47 +34,47 @@ def filter_data(data, col, operator, value, chunked_filter=False, chunk_size=100
         # NUMERIC FILTERING
         elif value_type == 'numeric' and cell_type == 'numeric':
             if operator == "==" and cell_value_num == value_num:
-                result.append(row)
+                return True
             elif operator == "!=" and cell_value_num != value_num:
-                result.append(row)
+                return True
             elif operator == ">" and cell_value_num > value_num:
-                result.append(row)
+                return True
             elif operator == "<" and cell_value_num < value_num:
-                result.append(row)
+                return True
             elif operator == ">=" and cell_value_num >= value_num:
-                result.append(row)
+                return True
             elif operator == "<=" and cell_value_num <= value_num:
-                result.append(row)
+                return True
 
         
-        # Fallback comparison (string or other types)
-        else: 
+        # FALLBACK STRING OR OTHER TYPE COMPARE
+        else:
             if operator == "==" and cell_value == value:
-                result.append(row)
+                return True
             elif operator == "!=" and cell_value != value:
-                result.append(row)
+                return True
             elif operator == ">" and cell_value > value:
-                result.append(row)
+                return True
             elif operator == "<" and cell_value < value:
-                result.append(row)
+                return True
             elif operator == ">=" and cell_value >= value:
-                result.append(row)
+                return True
             elif operator == "<=" and cell_value <= value:
-                result.append(row)
+                return True
     
         return False 
 
     if chunked_filter: 
         # Process data in chunks using chunked_csv_reader
         for chunk in chunked_csv_reader(data, chunk_size=chunk_size):
-            for row in chunk:
-                if row_matches(row):
-                    result.append(row)
+            filtered_chunk = [row for row in chunk if row_matches(row)]
+            result.extend(filtered_chunk)
 
     else:
         # Original behavior on full data list 
-        for row in data:
-            if row_matches(row):
-                result.append(row)
+        filtered_data = [row for row in data if row_matches(row)]
+        result.extend(filtered_data)
+
+    return result
     
 

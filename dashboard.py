@@ -61,6 +61,11 @@ datasets = {
     "Countries": (load_data(countries_path), load_data(countries_path, "table")),
 }
 
+dataset_paths = {
+    "Food Imports": food_imports_path,
+    "Countries": countries_path
+}
+
 # tables for JOIN
 table1 = read_csv(countries_path)
 table1_col_types = get_column_types(table1)
@@ -98,6 +103,8 @@ dataset_name = st.selectbox("Select a dataset:", list(datasets.keys()))
 
 # original dataset + table version
 original_data, original_table = datasets[dataset_name]
+
+file_path = dataset_paths[dataset_name]
 
 # Determine starting dataset for pipeline:
 # If we JUST ran a join → use joined data
@@ -172,7 +179,12 @@ if chunked_filter:
 # Apply Filter button
 if st.button("Apply Filter"):
     try:
-        current_data = filter_data(current_data, filter_col, raw_op, filter_value, chunked_filter = chunked_filter, chunk_size = chunk_size)
+        if chunked_filter:
+            # Pass CSV file path (string) for chunked filtering
+            current_data = filter_data(file_path, filter_col, raw_op, filter_value, chunked_filter=True, chunk_size=chunk_size)
+        else:
+            # Pass regular loaded data list for standard filtering
+            current_data = filter_data(current_data, filter_col, raw_op, filter_value, chunked_filter=False)
         st.session_state.current_data = current_data
         st.session_state.processed_table = format_for_table(current_data)
         st.success("Filter applied.")
