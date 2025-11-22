@@ -1,5 +1,8 @@
-# make a function that filters dataset based on specified col
 from chunked_csv_read import chunked_csv_reader
+
+# make a function that filters dataset based on specified col
+# numerical data can get filtered with >, <, >=, <=, ==, !=
+# string data can get filtered with ==, !=
 
 def filter_data(data, col, operator, value, chunked_filter=False, chunk_size=1000):
     result = []
@@ -9,14 +12,15 @@ def filter_data(data, col, operator, value, chunked_filter=False, chunk_size=100
         try: # handle numeric comparisons
             value_num = float(value)
             value_type = 'numeric'
-        except ValueError: # fallback to string comparisons, lowercase and strip spaces
+        except ValueError: 
+            # fallback to string comparisons, lowercase and strip spaces
             # if user filters by country "Mexico", it should match " mexico ", "MEXICO", etc.
             value_str = str(value).lower().strip()
             value_type = 'string'
 
         cell_value = row[col]
 
-        # Try converting the cell
+        # try converting the cell
         try:
             cell_value_num = float(cell_value)
             cell_type = 'numeric'
@@ -65,7 +69,9 @@ def filter_data(data, col, operator, value, chunked_filter=False, chunk_size=100
         return False 
 
     if chunked_filter: 
-        # Process data in chunks using chunked_csv_reader
+        # process data in chunks using chunked_csv_reader
+        # split your data into chunks and process each chunk individually with 
+        # your functions and then aggregate results from each chunk to get the final results
         for chunk in chunked_csv_reader(data, chunk_size=chunk_size):
             filtered_chunk = [row for row in chunk if row_matches(row)]
             result.extend(filtered_chunk)
