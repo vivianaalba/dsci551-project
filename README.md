@@ -10,7 +10,8 @@ This project is designed to mimic basic SQL operations without using libraries l
 
 1. **Dataset Selection**  
    Users can choose from multiple datasets to explore. Currently available datasets:  
-   - Countries (`countries.csv`)  
+   - Countries (`countries.csv`: Global Country Information Dataset 2023
+ , Kaggle, https://www.kaggle.com/datasets/nelgiriyewithana/countries-of-the-world-2023)
    - Food Imports (`FoodImports.csv`: U.S. Department of Agriculture, Economic Research Service. U.S. Food Imports Data. https://www.ers.usda.gov/data-products/us-food-imports)
 
 2. **Filter Data**  
