@@ -1,6 +1,9 @@
 import re
 
 # validate file path name and make sure that it is a csv
+# in this application, a user cannot upload files themselves
+# so validation may not be necessary, bc used internally when file is uploaded
+# but good practice to validate -- in the future can expand application to allow user uploads
 
 def validate_name(name):
     # clean name (remove leading spaces)

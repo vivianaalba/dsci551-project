@@ -20,7 +20,7 @@ def sort_data(data, col, order_by="asc"):
 
     return sorted_data
 
-
+# chose to use quicksort bc it is efficient and easy to implement for this use case
 def quicksort(arr, key):
     if len(arr) <= 1: #if array less than 1, do not sort futher
         return arr

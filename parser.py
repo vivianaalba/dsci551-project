@@ -4,13 +4,13 @@
 # Parses simple objects formatted as {key: value, ...}
 
 def parse_object(field):
-    # Remove surrounding braces if present
+    # remove surrounding braces if present
     content = field.strip()[1:-1].strip()
     obj = {}
     if not content:
         return obj  # empty object
 
-    # Split by commas for pairs
+    # split by commas for pairs
     pairs = content.split(',')
     for pair in pairs:
         if ':' in pair:
@@ -46,6 +46,9 @@ def parse_field(field):
         return field
 
     # ---- NUMERIC NORMALIZATION ----
+    # normalizing numbers with diff formats will help when comparing vals
+    # also accounts for numbers that are in "European" format
+
     # Remove spaces: "1 000" → "1000"
     cleaned = field.replace(" ", "")
 
@@ -62,27 +65,29 @@ def parse_field(field):
         # Only comma exists → treat as decimal comma
         cleaned = cleaned.replace(",", ".")
 
-    # Try integer
+    # try to make the val an integer first
     try:
         return int(cleaned)
     except ValueError:
         pass
 
-    # Try float
+    # then try float
     try:
         return float(cleaned)
     except ValueError:
         pass
 
-    # Try parsing object
+    # try parsing object
     if field.startswith('{') and field.endswith('}'):
         return parse_object(field)
 
     # Handle quoted strings
+    # some fields may look like "Yogurt, buttermilk, or whey"
+    # must handle these commas so that they don't split the object incorrectly
     if field.startswith('"') and field.endswith('"'):
         return field[1:-1].replace('""', '"')
 
-    # Default: return cleaned string
+    # default: return cleaned string
     return field
 
 

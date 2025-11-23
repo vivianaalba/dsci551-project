@@ -1,12 +1,10 @@
 from parser import parse_field
-# If using chunked mode, import your chunk reader:
-# from chunked_csv_read import chunked_csv_reader
-
 
 # normalize missing group keys, so that they are grouped together
 # chose to do this because missing keys would create many separate groups
 # instead of ignoring, we group them under "Unknown"
 # missing vals can be important in analysis
+
 def clean_key_value(val):
     if val is None: # our parsing function returns None for missing
         return "Unknown"
@@ -64,14 +62,14 @@ def nested_group_by(data, key_funcs, agg_func=None, chunked_aggregate=False, chu
         for chunk in chunked_csv_reader(data, chunk_size=chunk_size):
             for item in chunk:
                 raw_key = key_func(item)
-                key = clean_key_value(raw_key)   # CLEAN GROUP KEY
+                key = clean_key_value(raw_key) # clean group key
                 if key not in groups:
                     groups[key] = []
                 groups[key].append(item)
     else:
         for item in data:
             raw_key = key_func(item)
-            key = clean_key_value(raw_key)       # CLEAN GROUP KEY
+            key = clean_key_value(raw_key) # clean group key
             if key not in groups:
                 groups[key] = []
             groups[key].append(item)

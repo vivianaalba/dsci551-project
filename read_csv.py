@@ -1,10 +1,12 @@
+# import our own modules to help with loading and parsing file
 from validate_path import validate_file
 from parser import parse_csv_line, parse_field
 from chunked_csv_read import chunked_csv_reader
 
 ######## IMPLEMENTING CHUNK SIZE READING ########
-# This would be used if we want to omit the file size check and always perform chunked reading
-# Chunked reading works file for small and large files
+# this would be used if we want to omit the file size check and always perform chunked reading
+# chunked reading works file for small and large files
+# allows for scaling to handle larger files that do not fit in memory
 def read_csv(file_path, chunk_size=1000, table_format=False):
     # Validate file existence or path correctness 
     if not validate_file(file_path):
@@ -104,36 +106,36 @@ def read_csv(file_path, chunk_size=1000, table_format=False):
     else:
         return data
 
-def parse_csv_line(line):
+# def parse_csv_line(line):
 
-    # Handles commas inside quotes, ex:
-    # "Cocoa paste, butter, and powder",WORLD,"1,000 mt"
-    # ["Cocoa paste, butter, and powder", "WORLD", "1,000 mt"]
+#     # Handles commas inside quotes, ex:
+#     # "Cocoa paste, butter, and powder",WORLD,"1,000 mt"
+#     # ["Cocoa paste, butter, and powder", "WORLD", "1,000 mt"]
 
-    fields = []
-    field = ""
-    in_quotes = False
+#     fields = []
+#     field = ""
+#     in_quotes = False
 
-    i = 0
-    while i < len(line):
-        char = line[i]
+#     i = 0
+#     while i < len(line):
+#         char = line[i]
 
-        if char == '"':  # toggle quoted state
-            # Look ahead for double quotes inside a quoted field (escaped quotes)
-            if in_quotes and i + 1 < len(line) and line[i + 1] == '"':
-                field += '"'  # add one literal quote
-                i += 1  # skip the next quote
-            else:
-                in_quotes = not in_quotes  # toggle quote mode
+#         if char == '"':  # toggle quoted state
+#             # Look ahead for double quotes inside a quoted field (escaped quotes)
+#             if in_quotes and i + 1 < len(line) and line[i + 1] == '"':
+#                 field += '"'  # add one literal quote
+#                 i += 1  # skip the next quote
+#             else:
+#                 in_quotes = not in_quotes  # toggle quote mode
 
-        elif char == ',' and not in_quotes:
-            # Comma outside quotes = new field
-            fields.append(parse_field(field))
-            field = ""
+#         elif char == ',' and not in_quotes:
+#             # Comma outside quotes = new field
+#             fields.append(parse_field(field))
+#             field = ""
 
-        else:
-            field += char
-        i += 1
+#         else:
+#             field += char
+#         i += 1
 
-    fields.append(parse_field(field))  # last field
-    return fields
+#     fields.append(parse_field(field))  # last field
+#     return fields

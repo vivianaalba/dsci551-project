@@ -1,12 +1,11 @@
 from parser import parse_csv_line
 from validate_path import validate_file
 
+# Processes a large CSV file and yields lists of row dicts in batches
+# Useful for scaling -- when dataset does not fit in main memory
 def chunked_csv_reader(file_path, chunk_size=1000):
-    """
-    Generator: Processes a large CSV file and yields lists of row dicts in batches.
-    Uses record_generator and parse_csv_line for robust parsing.
-    """
-    if not validate_file(file_path):
+
+    if not validate_file(file_path): # use custom validation function to make sure file exists
         raise FileNotFoundError(f"File not found or invalid: {file_path}")
 
     with open(file_path, "r", encoding="utf-8") as f:
@@ -28,5 +27,5 @@ def chunked_csv_reader(file_path, chunk_size=1000):
                 yield chunk
                 chunk = []
         if chunk:
-            yield chunk  # Yield any leftover rows at the end
+            yield chunk  # yield any leftover rows at the end
 

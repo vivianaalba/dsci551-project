@@ -62,15 +62,17 @@ This project is designed to mimic basic SQL operations without using libraries l
    - Clears all filters, projections, sorts, joins, aggregated results, and cached data.  
    - Returns the dashboard to its original state for fresh analysis.
 
-10. **Paginated Table View**  
-   - Uses a custom pagination system to display large tables in manageable pages.  
-   - Supports horizontal scrolling for wide tables, improving readability.  
-   - Ideal for datasets with many columns.
-
-11. **Chunked Reading for Scalability**  
-   - Implements custom `chunked_csv_reader` to load large CSV files in batches.  
-   - Prevents memory overload by processing data incrementally.  
-   - Supports scalable previewing and step-by-step processing of large datasets.
+10. **Scaling Features**
+   - **Chunked Reading for Scalability**  
+      - Implements custom `chunked_csv_reader` to load large CSV files in batches.  
+      - Prevents memory overload by processing data incrementally.  
+      - Supports scalable previewing and step-by-step processing of large datasets.
+   - **Paginated Table View**  
+      - Uses a custom pagination system to display large tables in manageable pages.  
+      - Supports horizontal scrolling for wide tables, improving readability.  
+      - Ideal for datasets with many columns.
+   - **Caching Data in Dashboard**
+      - Allows for faster processing when using large datasets by preventing contstant reload of data.
 
 
 ## Setup Instructions
