@@ -1,1 +1,2 @@
 streamlit
+re # only used to validate file path to make sure file is a csv -- validate_path.py, not used in any processing functions
