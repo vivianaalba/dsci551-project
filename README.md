@@ -1,5 +1,6 @@
 # dsci551-project
 A data-driven web application that parses, filters, projects, groups, aggregates, and joins CSV datasets using custom Python functions.
+Project by: Viviana Alba, Kayla Hoffman -- M/W Section
 
 ## Overview
 This project implements an Interactive Data Processing Dashboard using Python and Streamlit. The dashboard allows users to explore and analyze datasets using common data operations such as filtering, projection, sorting, grouping, aggregating, and joining tables. All features are optional, giving users flexibility in how they manipulate and view data. <br>
