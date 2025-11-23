@@ -5,8 +5,8 @@ from chunked_csv_read import chunked_csv_reader
 
 ######## IMPLEMENTING CHUNK SIZE READING ########
 # this would be used if we want to omit the file size check and always perform chunked reading
-# chunked reading works file for small and large files
-# allows for scaling to handle larger files that do not fit in memory
+# chunked reading for loading and parsing works file for small and large files
+# serves as scaling feature -- handle larger files that do not fit in memory
 def read_csv(file_path, chunk_size=1000, table_format=False):
     # Validate file existence or path correctness 
     if not validate_file(file_path):
@@ -58,7 +58,8 @@ def read_csv(file_path, chunk_size=1000, table_format=False):
             
     # For chunked reading, use chunked_csv_reader
     for chunk in chunked_csv_reader(file_path, chunk_size=chunk_size):
-        # Lowercase keys for all rows in chunk
+        # normalize keys for all rows in chunk
+        # helps with comparisons for our other functions such as filter, join, etc.
         new_chunk = []
         for row in chunk:
             clean_row = {}
@@ -66,7 +67,7 @@ def read_csv(file_path, chunk_size=1000, table_format=False):
                 key = k.lower().strip()
                 if isinstance(v, str):
                     cleaned = v.strip()
-                    # Try numeric normalization
+                    # try numeric normalization
                     try:
                         normalized = cleaned.replace(",", ".")
                         clean_row[key] = float(normalized)
@@ -77,7 +78,7 @@ def read_csv(file_path, chunk_size=1000, table_format=False):
             new_chunk.append(clean_row)
         if table_format:
             headers = list(new_chunk[0].keys()) if new_chunk else []
-            # Lowercase the headers here
+            # normalize headers by lowercasing and stripping
             headers = [h.lower().strip() for h in headers]
 
             table_rows = []
@@ -88,13 +89,12 @@ def read_csv(file_path, chunk_size=1000, table_format=False):
                 table_rows.append(row_list)
 
             table_chunk = [headers] + table_rows
-            # You can choose to collect all chunks or yield each
-            data.append(table_chunk)  # if accumulating all chunks
+            data.append(table_chunk)  # can accumulate all chunks
         else:
             data.extend(new_chunk)  # flatten chunks into one list
 
     if table_format:
-        # Flatten tables from all chunks into a single table
+        # flatten tables from all chunks into one single table
         if not data:
             return []
         headers = data[0][0]
@@ -105,37 +105,3 @@ def read_csv(file_path, chunk_size=1000, table_format=False):
         return table
     else:
         return data
-
-# def parse_csv_line(line):
-
-#     # Handles commas inside quotes, ex:
-#     # "Cocoa paste, butter, and powder",WORLD,"1,000 mt"
-#     # ["Cocoa paste, butter, and powder", "WORLD", "1,000 mt"]
-
-#     fields = []
-#     field = ""
-#     in_quotes = False
-
-#     i = 0
-#     while i < len(line):
-#         char = line[i]
-
-#         if char == '"':  # toggle quoted state
-#             # Look ahead for double quotes inside a quoted field (escaped quotes)
-#             if in_quotes and i + 1 < len(line) and line[i + 1] == '"':
-#                 field += '"'  # add one literal quote
-#                 i += 1  # skip the next quote
-#             else:
-#                 in_quotes = not in_quotes  # toggle quote mode
-
-#         elif char == ',' and not in_quotes:
-#             # Comma outside quotes = new field
-#             fields.append(parse_field(field))
-#             field = ""
-
-#         else:
-#             field += char
-#         i += 1
-
-#     fields.append(parse_field(field))  # last field
-#     return fields

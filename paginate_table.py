@@ -1,7 +1,8 @@
 import streamlit as st
 
 # helper function to paginate tables 
-# prevents scrolling fatigue + helps scaling
+# prevents scrolling fatigue 
+# helps with scaling, prevents long load times
 def paginate_table(table_data, key_prefix=""):
 
     if not table_data or len(table_data) < 2:
