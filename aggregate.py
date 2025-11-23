@@ -3,23 +3,23 @@ from parser import parse_field
 # from chunked_csv_read import chunked_csv_reader
 
 
-# ---- Helper to normalize missing group keys ----
+# normalize missing group keys, so that they are grouped together
+# chose to do this because missing keys would create many separate groups
+# instead of ignoring, we group them under "Unknown"
+# missing vals can be important in analysis
 def clean_key_value(val):
-    # Normalize None first
-    if val is None:
+    if val is None: # our parsing function returns None for missing
         return "Unknown"
 
-    # Normalize string after stripping
-    s = str(val).strip().lower()
+    s = str(val).strip().lower() 
 
-    if s in ["", "<na>", "na", "n/a", "none", "null"]:
+    if s in ["", "<na>", "na", "n/a", "none", "null"]: # extras in case output for none differs
         return "Unknown"
 
-    # Always return normalized string, never original
-    return str(val).strip()
+    return str(val).strip() # always return cleaned string
 
 
-# ---- Basic group by function ----
+# group by function (without aggregation)
 def group_by(data, key, chunked_aggregate=False, chunk_size=1000):
     groups = {}
 
@@ -34,7 +34,7 @@ def group_by(data, key, chunked_aggregate=False, chunk_size=1000):
     return groups
 
 
-# ---- Group by with aggregation ----
+# group by (with aggregation)
 def group_by_aggregate(data, group_col, agg_col, agg_func, chunked_aggregate=False, chunk_size=1000):
     groups = group_by(data, group_col, chunked_aggregate=chunked_aggregate, chunk_size=chunk_size)
     result = {}
